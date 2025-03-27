@@ -70,8 +70,8 @@ notebooks = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/DHI/IHAR-autocal"
-"Bug Tracker" = "https://github.com/DHI/IHAR-autocal/issues"
+"Homepage" = "https://github.com/DHI/mike_autocal"
+"Bug Tracker" = "https://github.com/DHI/mike_autocal/issues"
 
 [tool.ruff]
 # ignore long lines
