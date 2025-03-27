@@ -18,7 +18,7 @@ warnings.filterwarnings("ignore", category=ExperimentalWarning)
 
 logging.basicConfig()
 logger = logging.getLogger("autocal")
-
+logger.setLevel(logging.INFO)
 
 class AutoCal:
     def __init__(
