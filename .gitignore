@@ -1,3 +1,10 @@
+# mike_autocal related
+optuna_log.journal
+logs/
+**trial_*.dfsu
+**trial_*.log
+**trial_*.m21fm*
+
 # PyCharm
 .idea/
 
