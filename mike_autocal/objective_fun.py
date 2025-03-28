@@ -16,6 +16,8 @@ logger = logging.getLogger("autocal")
 
 @dataclass
 class InnerEvaluation:
+    """The output of the InnerMetrics"""
+
     metric: str
     # pair_type: list[str]
     names: list[str]
@@ -57,7 +59,7 @@ class InnerMetric(ABC):
     def evaluate(self, simobs: SimObsPairCollection):
         pass
 
-    def _match_track_pairs(self, simobs: SimObsPairCollection, cc: ms.ComparerCollection | None):
+    def _match_track_pairs(self, simobs: SimObsPairCollection, cc: ms.ComparerCollection | None) -> ms.ComparerCollection:
         track_pairs = [pair for pair in simobs.simobs_pairs if pair.pair_type == "track"]
 
         for pair in track_pairs:
@@ -69,13 +71,13 @@ class InnerMetric(ABC):
 
         return cc
 
-    def _match_point_pairs(self, simobs: SimObsPairCollection, cc: ms.ComparerCollection | None) -> tuple[ms.ComparerCollection,]:
+    def _match_point_pairs(self, simobs: SimObsPairCollection, cc: ms.ComparerCollection | None) -> ms.ComparerCollection:
         point_pairs = [pair for pair in simobs.simobs_pairs if pair.pair_type == "point"]
 
         for pair in point_pairs:
             gc.collect()
             sim = ms.PointModelResult(pair.sim.data, name=pair.name)
-            obs = ms.TrackObservation(data=pair.obs.data, name=pair.name)
+            obs = ms.PointObservation(data=pair.obs.data, name=pair.name)
             matched = ms.match(obs, sim)
             cc = matched if cc is None else cc + matched
 
