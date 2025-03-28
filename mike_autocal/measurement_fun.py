@@ -62,7 +62,6 @@ class BaseMeasurementFunction(ABC):
 
 
 class ConditioningFile(BaseMeasurementFunction):
-
     def __init__(self, filename: str, item_name: str, low: float, high: float, step: float | None = None):
         """
         Initialize a Conditioning file instance. Conditioning files can for instance be bed roughness or smagorinsky coefficient files.

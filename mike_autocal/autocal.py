@@ -1,7 +1,5 @@
-import copy
 import datetime
 import logging
-import pickle
 import warnings
 from pathlib import Path
 
@@ -11,7 +9,7 @@ from optuna.samplers import BaseSampler
 
 from mike_autocal.dataio import SimObsPair, SimObsPairCollection
 from mike_autocal.measurement_fun import BaseMeasurementFunction
-from mike_autocal.mikesimulation import Launcher, RunTimeEvaluation
+from mike_autocal.mikesimulation import Launcher
 from mike_autocal.objective_fun import InnerMetric, OuterMetric
 
 warnings.filterwarnings("ignore", category=ExperimentalWarning)
@@ -19,6 +17,7 @@ warnings.filterwarnings("ignore", category=ExperimentalWarning)
 logging.basicConfig()
 logger = logging.getLogger("autocal")
 logger.setLevel(logging.INFO)
+
 
 class AutoCal:
     def __init__(
@@ -84,7 +83,7 @@ class AutoCal:
         and number of trials. The optuna results are stored in the specified log file.
         """
         storage = optuna.storages.JournalStorage(
-             optuna.storages.journal.JournalFileBackend(self.optuna_log.as_posix()),
+            optuna.storages.journal.JournalFileBackend(self.optuna_log.as_posix()),
         )
 
         if len(self.direction) == 1:

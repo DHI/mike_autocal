@@ -1,7 +1,6 @@
 import logging
 import multiprocessing
 import subprocess
-from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, TypeVar
@@ -22,6 +21,7 @@ logging.basicConfig()
 logger = logging.getLogger("launcher")
 
 np.seterr(divide="ignore")
+
 
 class RunTimeEvaluation:
     def __init__(
@@ -49,7 +49,7 @@ class RunTimeEvaluation:
             return [item]
         if isinstance(item, list):
             if all(issubclass(type(i), item_type) for i in item):
-                return item 
+                return item
             else:
                 raise TypeError(f"Expected {item_type} or list[{item_type}], got list{[type(i) for i in item]}")
         raise TypeError(f"Expected {item_type} or list[{item_type}], got {type(item)}")
@@ -74,7 +74,7 @@ class RunTimeEvaluation:
     def do_runtime_evaluation(self):
         if self._simobs is None:
             return False
-        return any(getattr(pair, 'pair_type', 'point') == 'point' for pair in self._simobs)
+        return any(getattr(pair, "pair_type", "point") == "point" for pair in self._simobs)
 
 
 class Launcher:

@@ -64,6 +64,7 @@ class SimObsPair:
     obs: ObservationData
     pair_type: Literal["point", "track"] = "point"
 
+
 @dataclass
 class SimObsPairCollection:
     simobs_pairs: list[SimObsPair] = field(default_factory=list)

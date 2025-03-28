@@ -21,11 +21,9 @@ dependencies = [
     "tqdm",
     "modelskill",
     "optuna>=4.2.1",
-    "cmaes",
     "numpy",
     "psutil",
     "scipy",
-    "dill",
 ]
 
 authors = [
