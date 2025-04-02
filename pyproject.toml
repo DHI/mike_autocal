@@ -24,6 +24,7 @@ dependencies = [
     "numpy",
     "psutil",
     "scipy",
+    "ipykernel"
 ]
 
 authors = [
