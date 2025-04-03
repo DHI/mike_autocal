@@ -18,6 +18,7 @@ version = "0.0.1"
 dependencies = [
     "mikeio",
     "torch",
+    "tensorboard",
     "tqdm",
     "modelskill",
     "optuna>=4.2.1",
