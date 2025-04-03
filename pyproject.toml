@@ -20,7 +20,7 @@ dependencies = [
     "torch",
     "tensorboard",
     "tqdm",
-    "modelskill",
+    "modelskill==1.0.0",
     "optuna>=4.2.1",
     "numpy",
     "psutil",
