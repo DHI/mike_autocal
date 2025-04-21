@@ -61,7 +61,7 @@ class BaseMeasurementFunction(ABC):
             return Path(current_simfile).with_stem(current_simfile.stem.replace(f"_trial_{trial_no - 1}", f"_trial_{trial_no}"))
 
 
-class ConditioningFile(BaseMeasurementFunction):
+class ConditioningFile(BaseMeasurementFunction, ABC):
     def __init__(self, filename: str, item_name: str, low: float, high: float, step: float | None = None):
         """
         Initialize a Conditioning file instance. Conditioning files can for instance be bed roughness or smagorinsky coefficient files.
@@ -160,6 +160,31 @@ class ConditioningFile(BaseMeasurementFunction):
         logger.debug(f"New {self.name} file created: {new_filename}")
 
         return Path(new_filename)
+    
+    @abstractmethod
+    def _modify(self, pfs: mikeio.PfsDocument, file_name:Path)-> None:
+        pass
+    
+    def create_new_simfile(self, new_param_value: list, current_simfile: str, trial_no: int, study_name: str) -> Path:
+        new_conditioning_file = self._create_new_conditioning_file(new_param_value, trial_no, study_name)
+
+        pfs = mikeio.read_pfs(current_simfile)
+
+        try:
+            self._modify(pfs, file_name=new_conditioning_file)
+            
+        except AttributeError as e:
+            raise AttributeError(f"Error updating {self.name} file: {e}")
+
+        new_simfile = self.create_new_path(current_simfile, trial_no, study_name)
+
+        try:
+            pfs.write(new_simfile)
+            logger.debug(f"New simulation file created: {new_simfile}")
+        except Exception as e:
+            raise Exception(f"Failed to write new simulation file: {e}")
+
+        return new_simfile
 
 
 class BedRoughnessFile(ConditioningFile, BaseMeasurementFunction):
@@ -167,83 +192,32 @@ class BedRoughnessFile(ConditioningFile, BaseMeasurementFunction):
     def name(self) -> str:
         return "Bed Roughness"
 
-    def create_new_simfile(self, new_param_value: list, current_simfile: str | Path, trial_no: int, study_name: str) -> Path:
-        new_conditioning_file = self._create_new_conditioning_file(new_param_value, trial_no, study_name)
-
-        pfs = mikeio.read_pfs(current_simfile)
-
-        try:
-            pfs.HD.BED_RESISTANCE.ROUGHNESS.file_name = f"|{new_conditioning_file}|"
-
-            pfs.HD.BED_RESISTANCE.ROUGHNESS.item_number = 1
-            pfs.HD.BED_RESISTANCE.ROUGHNESS.item_name = self.item_name
-        except AttributeError as e:
-            raise AttributeError(f"Failed to write {self.name} file path to simulation file: {e}")
-
-        new_simfile = self.create_new_path(current_simfile, trial_no, study_name)
-
-        try:
-            pfs.write(new_simfile)
-            logger.debug(f"New simulation file created: {new_simfile}")
-        except Exception as e:
-            raise Exception(f"Failed to write new simulation file: {e}")
-
-        return new_simfile
+    def _modify(self, pfs: mikeio.PfsDocument, file_name:Path)-> None:
+        section = pfs.HD.BED_RESISTANCE.ROUGHNESS
+        section.file_name = f"|{file_name}|"
+        section.item_number = 1
+        section.item_name = self.item_name
 
 
 class ManningFile(ConditioningFile, BaseMeasurementFunction):
     @property
     def name(self) -> str:
         return "Manning"
-
-    def create_new_simfile(self, new_param_value: list, current_simfile: str, trial_no: int, study_name: str) -> Path:
-        new_conditioning_file = self._create_new_conditioning_file(new_param_value, trial_no, study_name)
-
-        pfs = mikeio.read_pfs(current_simfile)
-
-        try:
-            pfs.HD.BED_RESISTANCE.MANNING_NUMBER.file_name = f"|{new_conditioning_file}|"
-
-            pfs.HD.BED_RESISTANCE.MANNING_NUMBER.item_number = 1
-            pfs.HD.BED_RESISTANCE.MANNING_NUMBER.item_name = self.item_name
-        except AttributeError as e:
-            raise AttributeError(f"Error updating {self.name} file: {e}")
-
-        new_simfile = self.create_new_path(current_simfile, trial_no, study_name)
-
-        try:
-            pfs.write(new_simfile)
-            logger.debug(f"New simulation file created: {new_simfile}")
-        except Exception as e:
-            raise Exception(f"Failed to write new simulation file: {e}")
-
-        return new_simfile
+    
+    def _modify(self, pfs: mikeio.PfsDocument, file_name:Path)-> None:
+        section = pfs.HD.BED_RESISTANCE.MANNING_NUMBER
+        section.file_name = f"|{file_name}|"
+        section.item_number = 1
+        section.item_name = self.item_name
 
 
 class SmagorinskyFile(ConditioningFile, BaseMeasurementFunction):
     @property
     def name(self) -> str:
         return "Smagorinsky"
-
-    def create_new_simfile(self, new_param_value: list, current_simfile: str, trial_no: int, study_name: str) -> Path:
-        new_conditioning_file = self._create_new_conditioning_file(new_param_value, trial_no, study_name)
-
-        pfs = mikeio.read_pfs(current_simfile)
-
-        try:
-            pfs.HD.EDDY_VISCOSITY.HORIZONTAL_EDDY_VISCOSITY.SMAGORINSKY_FORMULATION.file_name = f"|{new_conditioning_file}|"
-
-            pfs.HD.EDDY_VISCOSITY.HORIZONTAL_EDDY_VISCOSITY.SMAGORINSKY_FORMULATION.item_number = 1
-            pfs.HD.EDDY_VISCOSITY.HORIZONTAL_EDDY_VISCOSITY.SMAGORINSKY_FORMULATION.item_name = self.item_name
-        except AttributeError as e:
-            raise AttributeError(f"Error updating {self.name} file: {e}")
-
-        new_simfile = self.create_new_path(current_simfile, trial_no, study_name)
-
-        try:
-            pfs.write(new_simfile)
-            logger.debug(f"New simulation file created: {new_simfile}")
-        except Exception as e:
-            raise Exception(f"Failed to write new simulation file: {e}")
-
-        return new_simfile
+    
+    def _modify(self, pfs: mikeio.PfsDocument, file_name:Path)-> None:
+        section = pfs.HD.EDDY_VISCOSITY.HORIZONTAL_EDDY_VISCOSITY.SMAGORINSKY_FORMULATION
+        section.file_name = f"|{file_name}|"
+        section.item_number = 1
+        section.item_name = self.item_name
