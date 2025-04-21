@@ -18,12 +18,14 @@ version = "0.0.1"
 dependencies = [
     "mikeio",
     "torch",
+    "tensorboard",
     "tqdm",
-    "modelskill",
+    "modelskill==1.0.0",
     "optuna>=4.2.1",
     "numpy",
     "psutil",
     "scipy",
+    "ipykernel"
 ]
 
 authors = [
