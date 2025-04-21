@@ -29,8 +29,8 @@ dependencies = [
 ]
 
 authors = [
-  { name="Clemens Cremer", email="clcr@dhigroup.com" },
   { name="Faro Schäfer", email="fsch@dhigroup.com" },
+  { name="Clemens Cremer", email="clcr@dhigroup.com" },
   { name="Jesper Sandvig Mariegaard", email="jem@dhigroup.com" },
   { name="Henrik Andersson", email="jan@dhigroup.com" },
 ]
