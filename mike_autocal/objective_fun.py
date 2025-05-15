@@ -102,7 +102,7 @@ class RMSEInnerMetric(InnerMetric):
         )
 
         logger.debug(f"Memory usage: {get_memory_usage():.2f} MB")
-        logger.info(inner_evaluation)
+        # Logging is now handled in AutoCal._objective
 
         return inner_evaluation
 

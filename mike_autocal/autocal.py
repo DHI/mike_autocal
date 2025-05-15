@@ -164,13 +164,29 @@ class AutoCal:
 
         objective_values = []
 
+        # Store the inner evaluations to avoid duplicate logging
+        inner_evaluations = []
+        
         for inner_metric, outer_metric in zip(self.inner_metric, self.outer_metric):
-            objective_values.append(
-                self._evaluate_objective(
-                    simobs=self.simobs,
-                    inner_metric=inner_metric,
-                    outer_metric=outer_metric,
-                )
-            )
+            # Temporarily disable the logger to prevent duplicate logging
+            log_level = logger.level
+            logger.setLevel(logging.WARNING)  # Suppress INFO logs during evaluation
+            
+            # Get the inner evaluation
+            inner_evaluation = inner_metric.evaluate(self.simobs)
+            
+            # Restore logger level
+            logger.setLevel(log_level)
+            
+            # Store for logging once
+            inner_evaluations.append(inner_evaluation)
+            
+            # Calculate the outer evaluation
+            outer_evaluation = outer_metric.evaluate(inner_evaluation)
+            objective_values.append(outer_evaluation)
+
+        # Log each inner evaluation only once
+        for inner_evaluation in inner_evaluations:
+            logger.info(inner_evaluation)
 
         return tuple(objective_values)

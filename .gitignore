@@ -4,7 +4,7 @@ logs/
 **trial_*.dfsu
 **trial_*.log
 **trial_*.m21fm*
-
+**/* - Result Files*/
 # PyCharm
 .idea/
 
