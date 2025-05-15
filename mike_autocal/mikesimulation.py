@@ -29,14 +29,26 @@ class RunTimeEvaluation:
         simobs: list[SimObsPair] | None = None,
         inner_metric: list[InnerMetric] | InnerMetric | None = None,
         outer_metric: list[OuterMetric] | OuterMetric | None = None,
+        # frequency (int): Number of simulation timesteps between progress/logging updates.
+        # This is NOT a real-time interval (not minutes or seconds), but simulation steps.
         frequency: int = 10,
-        logdir: str | Path = Path(f"logs/simulation_{datetime.now().strftime('%Y%m%d_%H%M%S')}"),
+        logdir: str | Path | None = None,
+        sim_name: str | None = None,
     ):
         self._simobs = simobs
         self.inner_metric = self._ensure_list(inner_metric, InnerMetric)
         self.outer_metric = self._ensure_list(outer_metric, OuterMetric)
-        self.frequency = frequency
-        self.logdir = logdir
+        self.frequency = frequency  # Number of timesteps between log/progress updates
+        
+        # Create a descriptive log directory name with timestamp and simulation name if provided
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        if logdir is None:
+            if sim_name:
+                self.logdir = Path(f"logs/{sim_name}_{timestamp}")
+            else:
+                self.logdir = Path(f"logs/simulation_{timestamp}")
+        else:
+            self.logdir = logdir
 
         self._sanity_check()
 
@@ -101,7 +113,7 @@ class Launcher:
         simfile: str | Path,
         use_gpu: bool = True,
         n_cores: int | None = None,
-        runtimeevaluation: RunTimeEvaluation = RunTimeEvaluation(),
+        runtimeevaluation: RunTimeEvaluation | None = None,
     ):
         """
         Initializes the Launcher with simulation parameters.
@@ -115,7 +127,22 @@ class Launcher:
         self.simfile = Path(simfile)
         self.use_gpu = use_gpu
         self._n_cores = n_cores
-        self.rte = runtimeevaluation
+        
+        # Extract simulation name from the file path (without extension)
+        sim_name = Path(simfile).stem
+        
+        # If runtimeevaluation is provided, update its logdir if not explicitly set
+        if runtimeevaluation is not None:
+            self.rte = runtimeevaluation
+            # Check if the logdir follows the default pattern (simulation_YYYYMMDD_HHMMSS)
+            logdir_str = str(self.rte.logdir)
+            if "simulation_" in logdir_str and self.rte.logdir.name.startswith("simulation_"):
+                # Create a new logdir with the simulation name
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                self.rte.logdir = Path(f"logs/{sim_name}_{timestamp}")
+                logger.info(f"Updated log directory to: {self.rte.logdir}")
+        else:
+            self.rte = RunTimeEvaluation(sim_name=sim_name)
 
     @property
     def logfile(self) -> Path:
@@ -250,13 +277,24 @@ class Launcher:
         """
         Executes the simulation process using the constructed command.
 
+        The progress bar and TensorBoard logging are updated every N simulation timesteps, where N is set by
+        self.rte.frequency. This is NOT a real-time interval; it is based on the simulation's own timestep count.
+        """
+        """
+        Executes the simulation process using the constructed command.
+
         Args:
             command (str): The command to execute.
 
         Logs the process output (stdout and stderr) and tracks progress using `tqdm`.
         """
 
+        # Create a new SummaryWriter with the specified log directory
         writer = SummaryWriter(log_dir=self.rte.logdir)
+        
+        # Log the frequency setting for debugging
+        logger.info(f"RunTimeEvaluation frequency set to: {self.rte.frequency}")
+
 
         full_command = f"bash -c 'source {self.mikevars_script} && source {self.mpi_env_script} && {command}'"
         self.process = subprocess.Popen(
@@ -281,40 +319,49 @@ class Launcher:
                     for line in self.process.stdout:
                         if "Time step:" in line:
                             try:
-                                timestep = int(line.split(":")[1].strip())
-                                pbar.update(timestep - timestep_old)
-                                timestep_old = timestep
-                                if timestep > 0 and (timestep == 1 or timestep % self.rte.frequency == 0):
-                                    step_duration = (datetime.now() - start_time).total_seconds()
-                                    writer.add_scalar("time/step_duration", step_duration, timestep)
-                                    minutes_left = round(
-                                        step_duration * (num_timesteps - timestep) / 60,
-                                        2,
-                                    )
-                                    writer.add_scalar("time/minutes_left", minutes_left, timestep)
-                                    hours_left = round(
-                                        step_duration * (num_timesteps - timestep) / 3600,
-                                        2,
-                                    )
-                                    writer.add_scalar("time/hours_left", hours_left, timestep)
-
-                                    if self.rte.do_runtime_evaluation:
-                                        try:
-                                            self.rte.simobs.update(self.result_folder)
-                                            for inner_metric, outer_metric in zip(
-                                                self.rte.inner_metric,
-                                                self.rte.outer_metric,
-                                            ):
-                                                inner_evaluation = inner_metric.evaluate(self.rte.simobs)
-                                                outer_evaluation = outer_metric.evaluate(inner_evaluation)
-                                                writer.add_scalar(
-                                                    f"evaluation/{inner_metric.name}_{outer_metric.name}",
-                                                    outer_evaluation,
-                                                    timestep,
-                                                )
-                                        except Exception as e:
-                                            logger.warning(f"Failed to evaluate metrics for the runtime evaluation: {e}")
-
+                                current_timestep = int(line.split(":")[1].strip())
+                                logger.info(f"Detected timestep: {current_timestep}, frequency: {self.rte.frequency}")
+                                
+                                # Update progress bar with the actual steps jumped
+                                steps_jumped = current_timestep - timestep_old
+                                pbar.update(steps_jumped)
+                                
+                                # Generate all the timesteps that should be logged based on frequency
+                                # This handles cases where the simulation reports timesteps in chunks
+                                for ts in range(max(1, timestep_old + 1), current_timestep + 1):
+                                    if ts % self.rte.frequency == 0 or ts == 1:  # Always log first timestep
+                                        logger.info(f"Logging timestep {ts} (frequency: {self.rte.frequency})")
+                                        
+                                        # Log the current simulation time
+                                        step_duration = (datetime.now() - start_time).total_seconds()
+                                        writer.add_scalar("time/step_duration", step_duration, ts)
+                                        
+                                        # Calculate and log estimated time remaining
+                                        minutes_left = round(step_duration * (num_timesteps - ts) / 60, 2)
+                                        writer.add_scalar("time/minutes_left", minutes_left, ts)
+                                        hours_left = round(step_duration * (num_timesteps - ts) / 3600, 2)
+                                        writer.add_scalar("time/hours_left", hours_left, ts)
+                                        
+                                        # Perform runtime evaluation if enabled
+                                        if self.rte.do_runtime_evaluation:
+                                            try:
+                                                self.rte.simobs.update(self.result_folder)
+                                                for inner_metric, outer_metric in zip(
+                                                    self.rte.inner_metric,
+                                                    self.rte.outer_metric,
+                                                ):
+                                                    inner_evaluation = inner_metric.evaluate(self.rte.simobs)
+                                                    outer_evaluation = outer_metric.evaluate(inner_evaluation)
+                                                    writer.add_scalar(
+                                                        f"evaluation/{inner_metric.name}_{outer_metric.name}",
+                                                        outer_evaluation,
+                                                        ts,
+                                                    )
+                                            except Exception as e:
+                                                logger.warning(f"Failed to evaluate metrics for the runtime evaluation: {e}")
+                                
+                                # Update the timestep_old for next iteration
+                                timestep_old = current_timestep
                                 start_time = datetime.now()
                             except ValueError as e:
                                 logger.error(f"Failed to parse timestep from line: {line.strip()} ({e})")
@@ -403,7 +450,9 @@ class Launcher:
         if not self.use_gpu or command is None:
             command = self._build_cpu_command()
             if self.rte.do_runtime_evaluation and self.n_cpus > 1:
-                self.rte = RunTimeEvaluation(frequency=self.rte.frequency, logdir=self.rte.logdir)
+                # Extract simulation name from the file path (without extension)
+                sim_name = Path(self.simfile).stem
+                self.rte = RunTimeEvaluation(frequency=self.rte.frequency, sim_name=sim_name)
                 logger.warning("Runtime evaluation is not supported for CPU execution on multiple cores. Proceeding without runtime evaluation.")
 
         if command:
