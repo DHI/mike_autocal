@@ -333,14 +333,17 @@ class Launcher:
                                         logger.info(f"Logging timestep {ts} (frequency: {self.rte.frequency})")
                                         
                                         # Log the current simulation time
-                                        step_duration = (datetime.now() - start_time).total_seconds()
-                                        writer.add_scalar("time/step_duration", step_duration, ts)
+                                        elapsed_time = (datetime.now() - start_time).total_seconds()
+                                        seconds_per_step = elapsed_time / ts
+                                        writer.add_scalar("timestep/step_duration [s]", seconds_per_step, ts)
                                         
                                         # Calculate and log estimated time remaining
-                                        minutes_left = round(step_duration * (num_timesteps - ts) / 60, 2)
-                                        writer.add_scalar("time/minutes_left", minutes_left, ts)
-                                        hours_left = round(step_duration * (num_timesteps - ts) / 3600, 2)
-                                        writer.add_scalar("time/hours_left", hours_left, ts)
+                                        seconds_left = round(seconds_per_step * (num_timesteps - ts), 2)
+                                        writer.add_scalar("timestep/seconds_left", seconds_left, ts)
+                                        minutes_left = round(seconds_left / 60, 2)
+                                        writer.add_scalar("timestep/minutes_left", minutes_left, ts)
+                                        hours_left = round(seconds_left / 3600, 2)
+                                        writer.add_scalar("timestep/hours_left", hours_left, ts)
                                         
                                         # Perform runtime evaluation if enabled
                                         if self.rte.do_runtime_evaluation:
@@ -362,7 +365,6 @@ class Launcher:
                                 
                                 # Update the timestep_old for next iteration
                                 timestep_old = current_timestep
-                                start_time = datetime.now()
                             except ValueError as e:
                                 logger.error(f"Failed to parse timestep from line: {line.strip()} ({e})")
 
