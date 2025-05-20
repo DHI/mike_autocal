@@ -20,7 +20,10 @@ pip install -e .
 
 ## Basic Usage
 
-The basic usage is explained in the notebooks of the repository
+The basic usage is explained in the notebooks of the repository. The `demo.ipynb` notebook shows a simple example of how to use the library and is a good starting point going from simulation execution to the addition of observability features to automatic calibration.
+
+More sophisticated examples, e.g. calibration on satellite data, are shown in the other notebooks.
+
 
 ## License
 
